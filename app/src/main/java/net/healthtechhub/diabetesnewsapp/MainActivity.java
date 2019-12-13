@@ -6,8 +6,9 @@ import android.content.Intent;
 import android.content.Loader;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.support.v7.app.AppCompatActivity;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -22,9 +23,14 @@ public class MainActivity extends AppCompatActivity
 
     private static final String LOG_TAG = MainActivity.class.getName();
 
-    /** URL for post data from the dataset */
     private static final String USGS_REQUEST_URL =
-            "https://content.guardianapis.com/search?from-date=2015-01-01&q=diabetes&api-key=fc0bf16e-3603-4cc6-a119-30b7b9635d72";
+            "https://content.guardianapis.com/search?from-date=2015-01-01&q=diabetes&show-tags=contributor&api-key=fc0bf16e-3603-4cc6-a119-30b7b9635d72";
+    /**
+     * URI builder
+     */
+    Uri.Builder builder;
+    /** URL for post data from the dataset */
+    private String GuardianUrl;
 
     /**
      * Constant value for the post loader ID.
@@ -66,9 +72,11 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onClick(View view, int position) {
                 Post post = mPosts.get(position);
-                Intent postViewIntent = new Intent(MainActivity.this, WebViewActivity.class);
-                postViewIntent.putExtra("postUrl", post.getUrl());
-                startActivity(postViewIntent);
+                Uri webpage = Uri.parse(post.getUrl());
+                Intent postViewIntent = new Intent(Intent.ACTION_VIEW, webpage);
+                if (postViewIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(postViewIntent);
+                }
             }
 
             @Override
@@ -78,7 +86,18 @@ public class MainActivity extends AppCompatActivity
 
         }));
 
-        /// Get a reference to the ConnectivityManager to check state of network connectivity
+        // URI bulder declaration
+        builder = new Uri.Builder();
+        builder.scheme("https")
+                .authority("content.guardianapis.com")
+                .appendPath("search")
+                .appendQueryParameter("from-date", "2015-01-01")
+                .appendQueryParameter("q", "diabetes")
+                .appendQueryParameter("show-tags", "contributor")
+                .appendQueryParameter("api-key", "fc0bf16e-3603-4cc6-a119-30b7b9635d72");
+        GuardianUrl = builder.build().toString();
+
+        // Get a reference to the ConnectivityManager to check state of network connectivity
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE);
 
@@ -109,7 +128,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     public Loader<List<Post>> onCreateLoader(int i, Bundle bundle) {
         // Create a new loader for the given URL
-        return new PostLoader(this, USGS_REQUEST_URL);
+        return new PostLoader(this, GuardianUrl);
     }
 
     @Override
@@ -129,7 +148,6 @@ public class MainActivity extends AppCompatActivity
             mPostRecyclerView.setVisibility(View.VISIBLE);
             mEmptyStateTextView.setVisibility(View.GONE);
 
-            //mPostAdapter.notifyDataSetChanged();
             mPostAdapter = new PostAdapter(mPosts);
             mPostRecyclerView.setAdapter(mPostAdapter);
         }
